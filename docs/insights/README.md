@@ -1,6 +1,6 @@
 # Configure Insights
 
-The default configuration attached with `PHP Insights` is opiniated and may be not convenient for you.
+The default configuration attached with `PHP Insights` is opinionated and may be not convenient for you.
 
 Here you will learn how to configure PHPInsights for your project. 
 
@@ -39,7 +39,7 @@ return [
 By default, `phpinsights` will analyse all your php files in your project directory, except folders `bower_components`, `node_modules` and `vendor`.
 
 ::: tip For others preset
-In addition to theses folders :
+In addition to these folders :
 - With the **laravel** preset, `phpinsights` will exclude `config`, `storage`, `resources`, `bootstrap`, `nova`, `database`, `server.php`, `_ide_helper.php`, `_ide_helper_models.php`, `app/Providers/TelescopeServiceProvider.php` and `public`.
 - With the **symfony** preset, `phpinsights` will exclude `var`, `translations`, `config`, and `public`.
 - With the **magento2** preset, `phpinsights` will exclude `bin`, `dev`, `generated`, `lib`, `phpserver`, `pub`, `setup`, `update`, `var`, `app/autoload.php`, `app/bootstrap.php`, `app/functions.php` and `index.php`.
@@ -58,6 +58,38 @@ For example:
     ],
 ```
 
+## Exclude insight per particular method
+
+Open the insight class and look for `private const NAME` constant.
+
+> If the `NAME` constant doesn't exist, go to the `2nd option` paragraph (below).
+
+Copy value of the `NAME` constant and open a class with method that you would like exclude insight for. In the phpDoc add `@phpcsSuppress` annotation.
+
+#### Example
+
+After running `vendor/bin/phpinsights` you saw an error:
+
+```bash
+• [Code] Unused parameter:
+  src/YourClass.php:19: Unused parameter $thisIsUnusedParameter.
+```
+
+After verification [in documentation](https://phpinsights.com/insights/code.html#unused-parameter), you know that `\SlevomatCodingStandard\Sniffs\Functions\UnusedParameterSniff` class is responsible for the `[Code] Unused parameter` error and it contains `private const NAME = 'SlevomatCodingStandard.Functions.UnusedParameter’;`. Let's use it together with the `@phpcsSuppress` annotation:
+
+```php
+final class YourClass
+{
+    /**
+     * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter
+     */
+    public function yourMethod(array $thisIsUnusedParameter): void
+    {
+        // ...
+    }
+}
+```
+
 ## Add Insights
 
 If you create an Insight, or an Insight is not enabled, you can enable it in the `add` section.
@@ -66,7 +98,7 @@ For example, if you want to enable "Fully Qualified ClassName In Annotation":
 
 ```php
     'add' => [
-        \NunoMaduro\PhpInsights\Domain\Metrics\Code\Comment::class => [
+        \NunoMaduro\PhpInsights\Domain\Metrics\Code\Comments::class => [
             \SlevomatCodingStandard\Sniffs\Namespaces\FullyQualifiedClassNameInAnnotationSniff::class
         ]
     ]
@@ -124,3 +156,12 @@ For example, to remove "Unused Parameters" Insight only for some file:
     ],
 ```
 
+<Badge text="^2.0"/> For insights that come from PHP-CS-Fixer and implements `WhitespacesAwareFixerInterface`, you can also configure the indentation to respect: 
+
+```php
+    'configure' => [
+        \PhpCsFixer\Fixer\Basic\BracesFixer::class => [
+            'indent' => '  ',
+		],
+    ],
+```

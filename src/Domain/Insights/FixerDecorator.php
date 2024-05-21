@@ -10,6 +10,7 @@ use NunoMaduro\PhpInsights\Domain\Contracts\Insight as InsightContract;
 use NunoMaduro\PhpInsights\Domain\Details;
 use NunoMaduro\PhpInsights\Domain\Helper\Files;
 use PhpCsFixer\Fixer\FixerInterface;
+use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
 use PhpCsFixer\Tokenizer\Tokens;
 use SplFileInfo;
 
@@ -44,7 +45,7 @@ final class FixerDecorator implements FixerInterface, InsightContract, DetailsCa
         $this->fixer = $fixer;
         $this->exclude = [];
 
-        if (count($exclude) > 0) {
+        if ($exclude !== []) {
             $this->exclude = Files::find($dir, $exclude);
         }
     }
@@ -92,7 +93,7 @@ final class FixerDecorator implements FixerInterface, InsightContract, DetailsCa
      */
     public function hasIssue(): bool
     {
-        return count($this->errors) !== 0;
+        return $this->errors !== [];
     }
 
     /**
@@ -102,7 +103,7 @@ final class FixerDecorator implements FixerInterface, InsightContract, DetailsCa
     {
         $fixerClass = $this->getInsightClass();
         $path = explode('\\', $fixerClass);
-        $name = (string) array_pop($path);
+        $name = array_pop($path);
         $name = str_replace('Fixer', '', $name);
 
         return ucfirst(mb_strtolower(trim((string) preg_replace('/(?<! )[A-Z]/', ' $0', $name))));
@@ -133,15 +134,22 @@ final class FixerDecorator implements FixerInterface, InsightContract, DetailsCa
 
     public function addDiff(string $file, string $diff): void
     {
-        $diff = substr($diff, 8);
+        $diff = trim(substr($diff, 8));
 
         $this->errors[] = Details::make()->setFile($file)->setDiff($diff)->setMessage($diff);
+    }
+
+    public function getDefinition(): FixerDefinitionInterface
+    {
+        return $this->fixer->getDefinition();
     }
 
     private function skipFilesFromExcludedFiles(SplFileInfo $file): bool
     {
         $path = $file->getRealPath();
-
-        return $path !== false && isset($this->exclude[$path]);
+        if ($path === false) {
+            return false;
+        }
+        return isset($this->exclude[$path]);
     }
 }

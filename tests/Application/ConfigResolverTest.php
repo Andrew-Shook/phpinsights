@@ -31,7 +31,6 @@ final class ConfigResolverTest extends TestCase
     public function setUp(): void
     {
         parent::setUp();
-
         $this->baseFixturePath = dirname(__DIR__) . DIRECTORY_SEPARATOR .
             'Fixtures' . DIRECTORY_SEPARATOR . 'ConfigResolver' . DIRECTORY_SEPARATOR;
     }
@@ -97,6 +96,14 @@ final class ConfigResolverTest extends TestCase
         self::assertSame(DrupalPreset::class, $preset);
     }
 
+    public function testGuessWordPress(): void
+    {
+        $preset = ConfigResolver::guess(
+            Composer::fromPath($this->baseFixturePath . 'ComposerWordPress' . DIRECTORY_SEPARATOR . 'composer.json')
+        );
+        self::assertSame('wordpress', $preset);
+    }
+
     public function testResolvedConfigIsCorrectlyMerged(): void
     {
         $config = [
@@ -128,6 +135,8 @@ final class ConfigResolverTest extends TestCase
 
     public function testUnknownPresetReturnsDefault(): void
     {
+        $this->expectException(InvalidConfiguration::class);
+
         $config = ['preset' => 'UnknownPreset'];
 
         $config = ConfigResolver::resolve(

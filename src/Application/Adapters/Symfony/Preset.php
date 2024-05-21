@@ -48,9 +48,13 @@ final class Preset implements PresetContract, GuessablePreset
         $requirements = $composer->getRequirements();
 
         foreach (array_keys($requirements) as $requirement) {
-            if (strpos($requirement, 'symfony/framework-bundle') !== false
-                || strpos($requirement, 'symfony/flex') !== false
-                || strpos($requirement, 'symfony/symfony') !== false) {
+            if (strpos($requirement, 'symfony/framework-bundle') !== false) {
+                return true;
+            }
+            if (strpos($requirement, 'symfony/flex') !== false) {
+                return true;
+            }
+            if (strpos($requirement, 'symfony/symfony') !== false) {
                 return true;
             }
         }

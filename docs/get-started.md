@@ -1,6 +1,6 @@
 # Get started
 
-> **Requires:** [PHP 7.2+](https://php.net/releases/)
+> **Requires:** [PHP 7.4+](https://php.net/releases/)
 
 First, install PHP Insights via the `Composer` package manager:
 ```bash
@@ -58,7 +58,7 @@ php artisan insights
 
 You can also use `phpinsights` via Docker:
 ```bash
-docker run -it --rm -v $(pwd):/app nunomaduro/phpinsights
+docker run -it --rm -v "$(pwd):/app" nunomaduro/phpinsights
 ```
 
 ## Analyse a sub-directory or a specific file
@@ -82,7 +82,7 @@ php artisan insights path/to/analyse
 ## Fixing errors automatically <Badge text="^2.0"/>
 
 Some Insights support automatic fixing. 
-To fix your code automatically, two way are possibles: 
+To fix your code automatically, there are two possibilities: 
 
 * Add `--fix` option to your command. The output will be the classical output, with a summary of all issues fixed.
 * Or launch `phpinsights fix [directory]`
@@ -166,7 +166,7 @@ The PHP Insights console command has different verbosity levels, which determine
 
 ## Avoid Composer conflicts
 
-If you have trouble while requiring `phpinsights` with composer, try install it with [bamarni/composer-bin-plugin](https://github.com/bamarni/composer-bin-plugin) to isolate it from others dependencies:
+If you have trouble while requiring `phpinsights` with composer, try installing it with [bamarni/composer-bin-plugin](https://github.com/bamarni/composer-bin-plugin) to isolate it from others dependencies:
 
 ```bash
 composer require --dev bamarni/composer-bin-plugin
@@ -176,5 +176,20 @@ composer bin phpinsights require nunomaduro/phpinsights
 
 ## Flush cache results <Badge text="^2.0"/>
 
-Between 2 analysis, issues are cached. 
-PHPInsights is smart enough to invalidate cache when it detect changes in your code, but you may completly flush cache before analysis by adding `--flush-cache` flag.
+Between 2 analyses, issues are cached. 
+PHPInsights is smart enough to invalidate cache when it detects changes in your code, but you may completely flush cache before analysis by adding `--flush-cache` flag.
+
+## Configure diff <Badge text="^2.0"/>
+
+Some insights display a diff output.
+If you want more context on the diff, configure it in the `phpinsights.php` file:
+
+```php
+<?php
+
+return [
+    // ...
+    'diff_context' => 3,
+    // ...
+];
+```

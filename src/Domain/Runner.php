@@ -13,6 +13,7 @@ use Psr\SimpleCache\CacheInterface;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Finder\SplFileInfo;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 
 /**
@@ -54,7 +55,6 @@ final class Runner
 
         $this->cache = $container->get(CacheInterface::class);
 
-        /** @var \NunoMaduro\PhpInsights\Domain\Configuration $configuration */
         $this->configuration = $container->get(Configuration::class);
         $this->cacheKey = $this->configuration->getCacheKey();
         $this->threads = $this->configuration->getNumberOfThreads();
@@ -96,7 +96,8 @@ final class Runner
             );
 
             // process them
-            array_walk($filesCached,
+            array_walk(
+                $filesCached,
                 function (SplFileInfo $file): void {
                     $this->processFile($file);
                 }
@@ -149,13 +150,19 @@ final class Runner
             $runningProcesses[] = $process;
         }
 
-        while (\count($runningProcesses) > 0) {
+        while ($runningProcesses !== []) {
             foreach ($runningProcesses as $i => $runningProcess) {
-                if (! $runningProcess->isRunning()) {
-                    $progressBar->advance(\count($filesByThread[$i]));
-                    unset($runningProcesses[$i]);
+                if ($runningProcess->isRunning()) {
+                    usleep(1000);
+                    continue;
                 }
-                usleep(1000);
+
+                if (! $runningProcess->isSuccessful()) {
+                    throw new ProcessFailedException($runningProcess);
+                }
+
+                $progressBar->advance(\count($filesByThread[$i]));
+                unset($runningProcesses[$i]);
             }
         }
 
@@ -197,10 +204,12 @@ final class Runner
         $detailsByInsights = $this->cache->get($cacheKey);
         /** @var \NunoMaduro\PhpInsights\Domain\Contracts\Insight $insight */
         foreach ($this->allInsights as $insight) {
-            if (! $insight instanceof DetailsCarrier || ! isset($detailsByInsights[$insight->getInsightClass()])) {
+            if (! $insight instanceof DetailsCarrier) {
                 continue;
             }
-
+            if (! isset($detailsByInsights[$insight->getInsightClass()])) {
+                continue;
+            }
             array_walk(
                 $detailsByInsights[$insight->getInsightClass()],
                 static function (Details $details) use ($insight): void {
@@ -215,10 +224,12 @@ final class Runner
         $fixByInsights = $this->cache->get($cacheKey);
         /** @var \NunoMaduro\PhpInsights\Domain\Contracts\Insight $insight */
         foreach ($this->allInsights as $insight) {
-            if (! $insight instanceof Fixable || ! isset($fixByInsights[$insight->getInsightClass()])) {
+            if (! $insight instanceof Fixable) {
                 continue;
             }
-
+            if (! isset($fixByInsights[$insight->getInsightClass()])) {
+                continue;
+            }
             array_walk(
                 $fixByInsights[$insight->getInsightClass()],
                 static function (Details $details) use ($insight): void {

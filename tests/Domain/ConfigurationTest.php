@@ -88,11 +88,17 @@ final class ConfigurationTest extends TestCase
   
     public function testGetNumberOfThreads(): void
     {
+        $sysCommand = 'nproc';
+
         if (!file_exists('/usr/bin/nproc')) {
-            self::markTestSkipped('Unable to find nproc to get expected cores');
+            $sysCommand = 'sysctl -n hw.logicalcpu';
+
+            if (!file_exists('/usr/sbin/sysctl')) {
+                self::markTestSkipped('Unable to find nproc to get expected cores');
+            }
         }
 
-        $command = Process::fromShellCommandline('nproc');
+        $command = Process::fromShellCommandline($sysCommand);
         $command->run();
         $expected = (int) $command->getOutput();
 
@@ -121,7 +127,7 @@ final class ConfigurationTest extends TestCase
      */
     public function testExceptionOnInvalidSetThread($invalid): void
     {
-        $this->expectException(\Symfony\Component\OptionsResolver\Exception\InvalidOptionsException::class);
+        $this->expectException(InvalidConfiguration::class);
         $this->expectExceptionMessage('The option "threads" with value');
         new Configuration(['threads' => $invalid]);
     }
@@ -138,5 +144,13 @@ final class ConfigurationTest extends TestCase
             ['0'],
             ['2'],
         ];
+    }
+
+    public function testDefineTimeout(): void
+    {
+        $expected = random_int(60, 120);
+        $configuration = new Configuration(['timeout' => $expected]);
+
+        self::assertSame($expected, $configuration->getTimeout());
     }
 }

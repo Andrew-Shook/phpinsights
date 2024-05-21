@@ -34,13 +34,18 @@ final class SniffDecorator implements Sniff, Insight, DetailsCarrier, Fixable
      */
     private array $excludedFiles;
 
-    public function __construct(Sniff $sniff, string $dir)
+    /**
+     * SniffDecorator constructor.
+     *
+     * @param array<string> $exclude
+     */
+    public function __construct(Sniff $sniff, string $dir, array $exclude)
     {
         $this->sniff = $sniff;
         $this->excludedFiles = [];
 
-        if (count($this->getIgnoredFilesPath()) > 0) {
-            $this->excludedFiles = Files::find($dir, $this->getIgnoredFilesPath());
+        if ($exclude !== []) {
+            $this->excludedFiles = Files::find($dir, $exclude);
         }
     }
 
@@ -83,7 +88,7 @@ final class SniffDecorator implements Sniff, Insight, DetailsCarrier, Fixable
      */
     public function hasIssue(): bool
     {
-        return count($this->errors) !== 0;
+        return $this->errors !== [];
     }
 
     /**
@@ -94,7 +99,7 @@ final class SniffDecorator implements Sniff, Insight, DetailsCarrier, Fixable
         $sniffClass = $this->getInsightClass();
 
         $path = explode('\\', $sniffClass);
-        $name = (string) array_pop($path);
+        $name = array_pop($path);
 
         $name = str_replace('Sniff', '', $name);
 
@@ -130,15 +135,5 @@ final class SniffDecorator implements Sniff, Insight, DetailsCarrier, Fixable
             (string) $file->getFileInfo()->getRealPath(),
             $this->excludedFiles
         );
-    }
-
-    /**
-     * Contains the setting for all files which the sniff should ignore.
-     *
-     * @return array<int, string>
-     */
-    private function getIgnoredFilesPath(): array
-    {
-        return $this->sniff->exclude ?? [];
     }
 }

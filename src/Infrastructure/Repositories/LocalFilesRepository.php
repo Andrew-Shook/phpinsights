@@ -63,7 +63,7 @@ final class LocalFilesRepository implements FilesRepository
                 $this->fileList['basename'][] = $pathInfo['basename'];
                 $this->fileList['full_path'][] = $pathInfo['dirname'] . DIRECTORY_SEPARATOR . $pathInfo['basename'];
             } else {
-                $this->directoryList[] = $pathInfo['dirname'] . DIRECTORY_SEPARATOR . $pathInfo['basename'];
+                $this->directoryList[] = rtrim($pathInfo['dirname'], DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $pathInfo['basename'];
             }
         }
 
@@ -108,6 +108,8 @@ final class LocalFilesRepository implements FilesRepository
         $this->finder = Finder::create()
             ->in($this->fileList['dirname'] ?? [])
             ->name($this->fileList['basename'] ?? '')
+            ->ignoreDotFiles(false)
+            ->ignoreVCS(false)
             ->filter(fn (SplFileInfo $file): bool => in_array(
                 $file->getPathname(),
                 $this->fileList['full_path'] ?? '',

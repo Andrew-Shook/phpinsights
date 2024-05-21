@@ -78,8 +78,10 @@ final class Preset implements PresetContract, GuessablePreset
         $requirements = $composer->getRequirements();
 
         foreach (array_keys($requirements) as $requirement) {
-            if (strpos($requirement, 'laravel/framework') !== false
-                || strpos($requirement, 'illuminate/') !== false) {
+            if (strpos($requirement, 'laravel/framework') !== false) {
+                return true;
+            }
+            if (strpos($requirement, 'illuminate/') !== false) {
                 return true;
             }
         }

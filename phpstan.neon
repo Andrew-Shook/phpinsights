@@ -42,6 +42,7 @@ parameters:
             message: '#generic class ReflectionClass#'
             path: src/Domain/Reflection.php
         - '#NunoMaduro\\PhpInsights\\Domain\\File::addFixableError#'
+        - '#NunoMaduro\\PhpInsights\\Domain\\Differ#'
         - '#iterable type PhpCsFixer\\Tokenizer\\Tokens#'
         - '#Method NunoMaduro\\PhpInsights\\Application\\Console\\Definitions\\BaseDefinition::get\(\) is not final#'
         -
@@ -49,28 +50,11 @@ parameters:
             count: 2
             path: tests/TestCase.php
         -
-            message: '#^Parameter \#3 \$installationManager of class Composer\\Package\\Locker constructor expects Composer\\Installer\\InstallationManager, Composer\\Repository\\RepositoryManager given.#'
+            message: "#^Parameter \\#.* of class Composer\\\\Package\\\\Locker constructor expects .*$#"
+            count: 3
             path: src/Domain/ComposerLoader.php
-        -
-            message: '#^Parameter \#4 \$composerFileContents of class Composer\\Package\\Locker constructor expects string, Composer\\Installer\\InstallationManager given.#'
-            path: src/Domain/ComposerLoader.php
-        -
-            message: '#^Parameter \#5 \$process of class Composer\\Package\\Locker constructor expects Composer\\Util\\ProcessExecutor\|null, string given.#'
-            path: src/Domain/ComposerLoader.php
-        -
-            message: '#^Cannot call method getName\(\) on ReflectionType\|null.#'
-            path: src/Domain/ComposerLoader.php
-        -
-            message: '#Class Composer\\Package\\Locker constructor invoked with 4 parameters, 5 required.#'
-            path: src/Domain/ComposerLoader.php
-        -
-            message: '#^Parameter \#3 \$repositoryManager of class Composer\\Package\\Locker constructor expects Composer\\Repository\\RepositoryManager, Composer\\Installer\\InstallationManager given#'
-            path: src/Domain/ComposerLoader.php
-        -
-            message: '#^Parameter \#4 \$installationManager of class Composer\\Package\\Locker constructor expects Composer\\Installer\\InstallationManager, string given.#'
-            path: src/Domain/ComposerLoader.php
-
-    autoload_files:
+        - "#^Parameter \\#1 \\$input of function array_flip expects array\\<int\\|string\\>, array\\<string, array\\|float\\|int\\|string\\> given\\.$#"
+    bootstrapFiles:
         - %rootDir%/../../squizlabs/php_codesniffer/autoload.php
     reportUnmatchedIgnoredErrors: false
 

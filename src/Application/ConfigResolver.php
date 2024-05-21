@@ -8,6 +8,7 @@ use NunoMaduro\PhpInsights\Application\Adapters\Drupal\Preset as DrupalPreset;
 use NunoMaduro\PhpInsights\Application\Adapters\Laravel\Preset as LaravelPreset;
 use NunoMaduro\PhpInsights\Application\Adapters\Magento2\Preset as Magento2Preset;
 use NunoMaduro\PhpInsights\Application\Adapters\Symfony\Preset as SymfonyPreset;
+use NunoMaduro\PhpInsights\Application\Adapters\WordPress\Preset as WordPressPreset;
 use NunoMaduro\PhpInsights\Application\Adapters\Yii\Preset as YiiPreset;
 use NunoMaduro\PhpInsights\Application\Console\Formatters\PathShortener;
 use NunoMaduro\PhpInsights\Domain\Configuration;
@@ -33,6 +34,8 @@ final class ConfigResolver
         SymfonyPreset::class,
         YiiPreset::class,
         Magento2Preset::class,
+        WordPressPreset::class,
+        DefaultPreset::class,
     ];
 
     /**
@@ -150,8 +153,10 @@ final class ConfigResolver
         if ($composerPath === null) {
             $composerPath = rtrim($path, '/') . DIRECTORY_SEPARATOR . self::COMPOSER_FILENAME;
         }
-
-        if (strpos($composerPath, self::COMPOSER_FILENAME) === false || ! file_exists($composerPath)) {
+        if (strpos($composerPath, self::COMPOSER_FILENAME) === false) {
+            return new Composer([]);
+        }
+        if (! file_exists($composerPath)) {
             return new Composer([]);
         }
 
@@ -183,13 +188,13 @@ final class ConfigResolver
         $removedRulesByPreset = [];
         $addedRulesByConfig = [];
 
-        if (isset($preset['remove']) && is_array($preset['remove']) && count($preset['remove']) > 0) {
+        if (isset($preset['remove']) && is_array($preset['remove']) && $preset['remove'] !== []) {
             array_walk_recursive($preset['remove'], static function ($value) use (&$removedRulesByPreset): void {
                 $removedRulesByPreset[] = $value;
             });
         }
 
-        if (isset($config['add']) && is_array($config['add']) && count($config['add']) > 0) {
+        if (isset($config['add']) && is_array($config['add']) && $config['add'] !== []) {
             array_walk_recursive($config['add'], static function ($value) use (&$addedRulesByConfig): void {
                 $addedRulesByConfig[] = $value;
             });

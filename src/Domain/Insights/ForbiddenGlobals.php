@@ -14,7 +14,7 @@ final class ForbiddenGlobals extends Insight implements HasDetails
 {
     public function hasIssue(): bool
     {
-        return count($this->getDetails()) > 0;
+        return $this->getDetails() !== [];
     }
 
     public function getTitle(): string
@@ -30,12 +30,13 @@ final class ForbiddenGlobals extends Insight implements HasDetails
         $details = [];
 
         foreach ($this->collector->getGlobalVariableAccesses() as $file => $global) {
-            if ($this->shouldSkipFile($file)) {
+            $filePath = current(explode(':', $file));
+            if ($this->shouldSkipFile($filePath)) {
                 continue;
             }
 
             $details[] = Details::make()->setFile($file)->setMessage(
-                "Usage of ${global} found; Usage of GLOBALS are discouraged consider not relying on global scope"
+                "Usage of {$global} found; Usage of GLOBALS are discouraged consider not relying on global scope"
             );
         }
 

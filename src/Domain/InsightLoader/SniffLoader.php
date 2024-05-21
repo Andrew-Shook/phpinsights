@@ -17,6 +17,9 @@ final class SniffLoader implements InsightLoader
 {
     public function support(string $insightClass): bool
     {
+        if (class_implements($insightClass) === false) {
+            return false;
+        }
         return array_key_exists(SniffContract::class, class_implements($insightClass));
     }
 
@@ -25,10 +28,18 @@ final class SniffLoader implements InsightLoader
         /** @var SniffContract $sniff */
         $sniff = new $insightClass();
 
+        $excludeConfig = [];
+
+        if (isset($config['exclude'])) {
+            /** @var array<string> $excludeConfig */
+            $excludeConfig = $config['exclude'];
+            unset($config['exclude']);
+        }
+
         foreach ($config as $property => $value) {
             $sniff->{$property} = $value;
         }
 
-        return new SniffDecorator($sniff, $dir);
+        return new SniffDecorator($sniff, $dir, $excludeConfig);
     }
 }

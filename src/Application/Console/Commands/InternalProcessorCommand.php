@@ -19,6 +19,7 @@ use Psr\SimpleCache\CacheInterface;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Finder\SplFileInfo;
+use Symfony\Component\Process\Process;
 
 /**
  * @internal
@@ -62,7 +63,10 @@ final class InternalProcessorCommand
         }
 
         $files = $this->cache->get($cacheKey, []);
-        if (! \is_array($files) || \count($files) === 0) {
+        if (! \is_array($files)) {
+            return 0;
+        }
+        if ($files === []) {
             return 0;
         }
 
@@ -96,9 +100,7 @@ final class InternalProcessorCommand
         $loaders = $container->get(InsightLoaderContract::INSIGHT_LOADER_TAG);
 
         // exclude InsightLoader, not used here
-        $this->insightsLoaders = array_filter($loaders, static function (InsightLoaderContract $loader): bool {
-            return ! $loader instanceof InsightLoader;
-        });
+        $this->insightsLoaders = array_filter($loaders, static fn (InsightLoaderContract $loader): bool => ! $loader instanceof InsightLoader);
     }
 
     /**
@@ -108,10 +110,9 @@ final class InternalProcessorCommand
      */
     private function loadInsights(string $metricClass): array
     {
-        /** @var HasInsights $metric */
         $metric = new $metricClass();
 
-        $insights = \array_key_exists(HasInsights::class, class_implements($metricClass))
+        $insights = $metric instanceof HasInsights
             ? $metric->getInsights()
             : [];
 
@@ -154,15 +155,22 @@ final class InternalProcessorCommand
     {
         $cacheKey = 'insights.' . $this->configuration->getCacheKey() . '.' . md5($file->getContents());
         // Do not use cache if fix is enabled to force processors to handle it
-        if ($this->configuration->hasFixEnabled() === false && $this->cache->has($cacheKey)) {
+        if (! $this->configuration->hasFixEnabled() && $this->cache->has($cacheKey)) {
             return;
         }
+
+        if (! $this->isValidPhpFile($file)) {
+            // It's not a valid php file, don't process it to avoid sniffer/fixers error while parsing
+            $this->cacheDetailsForFile($cacheKey, $file);
+            return;
+        }
+
         /** @var FileProcessorContract $fileProcessor */
         foreach ($this->filesProcessors as $fileProcessor) {
             $fileProcessor->processFile($file);
         }
 
-        if ($this->configuration->hasFixEnabled() === true) {
+        if ($this->configuration->hasFixEnabled()) {
             // regenerate cache key in case fixer change contents
             $cacheKey = 'insights.' . $this->configuration->getCacheKey() . '.' . md5($file->getContents());
         }
@@ -180,7 +188,10 @@ final class InternalProcessorCommand
         $detailsByInsights = [];
         /** @var \NunoMaduro\PhpInsights\Domain\Contracts\Insight $insight */
         foreach ($this->allInsights as $insight) {
-            if (! $insight instanceof DetailsCarrier || ! $insight->hasIssue()) {
+            if (! $insight instanceof DetailsCarrier) {
+                continue;
+            }
+            if (! $insight->hasIssue()) {
                 continue;
             }
             $details = array_filter(
@@ -198,7 +209,10 @@ final class InternalProcessorCommand
         $fixByInsights = [];
         /** @var \NunoMaduro\PhpInsights\Domain\Contracts\Insight $insight */
         foreach ($this->allInsights as $insight) {
-            if (! $insight instanceof Fixable || $insight->getTotalFix() === 0) {
+            if (! $insight instanceof Fixable) {
+                continue;
+            }
+            if ($insight->getTotalFix() === 0) {
                 continue;
             }
             $details = array_filter(
@@ -209,5 +223,13 @@ final class InternalProcessorCommand
         }
 
         $this->cache->set($cacheKey, $fixByInsights);
+    }
+
+    private function isValidPhpFile(SplFileInfo $splFileInfo): bool
+    {
+        $checker = new Process([PHP_BINARY, '-l', $splFileInfo->getRealPath()]);
+        $checker->run();
+
+        return $checker->isSuccessful();
     }
 }

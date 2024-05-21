@@ -43,10 +43,12 @@ final class Checkstyle implements Formatter
         foreach ($metrics as $metricClass) {
             /** @var Insight $insight */
             foreach ($insightCollection->allFrom(new $metricClass()) as $insight) {
-                if (! $insight instanceof HasDetails || ! $insight->hasIssue()) {
+                if (! $insight instanceof HasDetails) {
                     continue;
                 }
-
+                if (! $insight->hasIssue()) {
+                    continue;
+                }
                 $details = $insight->getDetails();
                 usort($details, $detailsComparator);
 
@@ -54,7 +56,7 @@ final class Checkstyle implements Formatter
                 foreach ($details as $detail) {
                     $fileName = PathShortener::fileName($detail, $insightCollection->getCollector()->getCommonPath());
 
-                    if (isset($checkstyle->file) && (string) $checkstyle->file->attributes()['name'] === $fileName) {
+                    if (property_exists($checkstyle, 'file') && $checkstyle->file !== null && (string) $checkstyle->file->attributes()['name'] === $fileName) {
                         $file = $checkstyle->file;
                     } else {
                         $file = $checkstyle->addChild('file');
@@ -63,9 +65,9 @@ final class Checkstyle implements Formatter
 
                     $error = $file->addChild('error');
                     $error->addAttribute('severity', 'error');
-                    $error->addAttribute('source', $insight->getTitle());
+                    $error->addAttribute('source', str_replace('\\', '.', $insight->getInsightClass()));
                     $error->addAttribute('line', $detail->hasLine() ? (string) $detail->getLine() : '');
-                    $error->addAttribute('message', $detail->hasMessage() ? $detail->getMessage() : '');
+                    $error->addAttribute('message', $detail->hasMessage() ? $detail->getMessage() : $insight->getTitle());
                 }
             }
         }

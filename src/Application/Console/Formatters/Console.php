@@ -27,6 +27,7 @@ use NunoMaduro\PhpInsights\Domain\Metrics\Code\Functions;
 use NunoMaduro\PhpInsights\Domain\Metrics\Code\Globally;
 use NunoMaduro\PhpInsights\Domain\Metrics\Complexity\Complexity;
 use NunoMaduro\PhpInsights\Domain\Results;
+use Symfony\Component\Console\Formatter\OutputFormatter;
 use Symfony\Component\Console\Formatter\OutputFormatterStyle;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputInterface;
@@ -50,25 +51,25 @@ final class Console implements Formatter
 
     private const QUALITY = <<<EOD
     <%quality_color%>%block_size%</>
-    <fg=black;options=bold;%quality_color%>  %quality%  </>
+    <fg=white;options=bold;%quality_color%>  %quality%  </>
     <%quality_color%>%block_size%</>
     EOD;
 
     private const COMPLEXITY = <<<EOD
     <%complexity_color%>%block_size%</>
-    <fg=black;options=bold;%complexity_color%>  %complexity%  </>
+    <fg=white;options=bold;%complexity_color%>  %complexity%  </>
     <%complexity_color%>%block_size%</>
     EOD;
 
     private const STRUCTURE = <<<EOD
     <%structure_color%>%block_size%</>
-    <fg=black;options=bold;%structure_color%>  %structure%  </>
+    <fg=white;options=bold;%structure_color%>  %structure%  </>
     <%structure_color%>%block_size%</>
     EOD;
 
     private const STYLE = <<<EOD
     <%style_color%>%block_size%</>
-    <fg=black;options=bold;%style_color%>  %style%  </>
+    <fg=white;options=bold;%style_color%>  %style%  </>
     <%style_color%>%block_size%</>
     EOD;
 
@@ -104,9 +105,15 @@ final class Console implements Formatter
 
     private Configuration $config;
 
+    private bool $summaryOnly = false;
+
     public function __construct(InputInterface $input, OutputInterface $output)
     {
         $this->style = new Style($input, $output);
+
+        if ($input->hasOption('summary')) {
+            $this->summaryOnly = (bool) $input->getOption('summary');
+        }
         $this->totalWidth = (new Terminal())->getWidth();
 
         $outputFormatterStyle = new OutputFormatterStyle();
@@ -131,7 +138,9 @@ final class Console implements Formatter
             ->architecture($insightCollection, $results)
             ->miscellaneous($results);
 
-        $this->issues($insightCollection, $metrics, $insightCollection->getCollector()->getCommonPath());
+        if (! $this->summaryOnly) {
+            $this->issues($insightCollection, $metrics, $insightCollection->getCollector()->getCommonPath());
+        }
 
         if ($this->config->hasFixEnabled()) {
             $this->formatFix($insightCollection, $metrics);
@@ -145,6 +154,9 @@ final class Console implements Formatter
      */
     public function formatFix(InsightCollection $insightCollection, array $metrics): void
     {
+        $this->config = Container::make()->get(Configuration::class);
+        $this->fileLinkFormatter = $this->config->getFileLinkFormatter();
+
         $results = $insightCollection->results();
         $this->style->newLine();
 
@@ -171,19 +183,21 @@ final class Console implements Formatter
         }
 
         $this->style->success(sprintf('🧙 ️Congrats ! %s %s', $totalFix, $message));
-        $this->style->writeln(sprintf('<fg=yellow;options=bold>%s issues remaining</>', $totalIssues));
-        $this->style->newLine();
-
+        if ($this->summaryOnly) {
+            $metrics = [];
+        }
         foreach ($metrics as $metricClass) {
             $category = explode('\\', $metricClass);
             $category = $category[count($category) - 2];
 
             foreach ($insightCollection->allFrom(new $metricClass()) as $insight) {
-                if (! $insight instanceof Fixable || $insight->getTotalFix() === 0) {
+                if (! $insight instanceof Fixable) {
                     continue;
                 }
-
-                $fix = "<fg=green>• [${category}] </><bold>{$insight->getTitle()}</bold>:";
+                if ($insight->getTotalFix() === 0) {
+                    continue;
+                }
+                $fix = "<fg=green>• [{$category}] </><bold>{$insight->getTitle()}</bold>:";
 
                 $details = $insight->getFixPerFile();
                 /** @var Details $detail */
@@ -206,6 +220,7 @@ final class Console implements Formatter
             }
         }
 
+        $this->style->writeln(sprintf('<fg=yellow;options=bold>%s issues remaining</>', $totalIssues));
         $this->style->newLine();
     }
 
@@ -265,7 +280,7 @@ final class Console implements Formatter
         $lines = [];
         foreach (self::CODE_METRIC_CLASSES as $metric) {
             $name = explode('\\', $metric);
-            $lines[(string) end($name)] = (float) (new $metric())->getPercentage($insightCollection->getCollector());
+            $lines[end($name)] = (new $metric())->getPercentage($insightCollection->getCollector());
         }
 
         $this->writePercentageLines($lines);
@@ -307,7 +322,7 @@ final class Console implements Formatter
         $lines = [];
         foreach (self::ARCHITECTURE_METRIC_CLASSES as $metric) {
             $name = explode('\\', $metric);
-            $lines[(string) end($name)] = (float) (new $metric())->getPercentage($insightCollection->getCollector());
+            $lines[end($name)] = (new $metric())->getPercentage($insightCollection->getCollector());
         }
 
         $this->writePercentageLines($lines);
@@ -365,7 +380,7 @@ final class Console implements Formatter
 
                 $previousCategory = $category;
 
-                $issue = "\n<fg=red>•</> [${category}] <bold>{$insight->getTitle()}</bold>";
+                $issue = "\n<fg=red>•</> [{$category}] <bold>{$insight->getTitle()}</bold>";
 
                 if (! $insight instanceof HasDetails && ! $this->style->getOutput()->isVerbose()) {
                     $this->style->writeln($issue);
@@ -404,7 +419,7 @@ final class Console implements Formatter
                         $detailString .= ($detailString !== '' ? ': ' : '') . $this->parseDetailMessage($detail);
                     }
 
-                    $issue .= "\n  ${detailString}";
+                    $issue .= "\n  {$detailString}";
                 }
 
                 if (! $this->style->getOutput()->isVerbose() && $totalDetails > 3) {
@@ -612,6 +627,8 @@ final class Console implements Formatter
             $detailString = '';
 
             foreach (explode(PHP_EOL, $detail->getMessage()) as $line) {
+                $detailString .= PHP_EOL;
+
                 if (mb_strpos($line, '-') === 0) {
                     $hasColor = true;
                     $detailString .= '<fg=red>';
@@ -622,7 +639,7 @@ final class Console implements Formatter
                     $detailString .= '<fg=green>';
                 }
 
-                $detailString .= $line . PHP_EOL;
+                $detailString .= OutputFormatter::escape($line);
 
                 if ($hasColor) {
                     $hasColor = false;
@@ -633,6 +650,6 @@ final class Console implements Formatter
             return $detailString;
         }
 
-        return $detail->getMessage();
+        return OutputFormatter::escape($detail->getMessage());
     }
 }
